@@ -1,5 +1,8 @@
+using Newtonsoft.Json;
+using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace SignalSimulatorWinForm;
 
@@ -33,7 +36,7 @@ public partial class Form1 : Form
         txt_nmax.Text = NMax.ToString();
         txt_delta.Text = delta_t.ToString();
         txt_a0.Text = a0.ToString();
-        txt_N.Text = N.ToString(); 
+        txt_N.Text = N.ToString();
     }
 
     private void label2_Click(object sender, EventArgs e)
@@ -55,11 +58,10 @@ public partial class Form1 : Form
     {
 
     }
-
     private void button1_Click(object sender, EventArgs e)
     {
         UpdateABValues();
-
+        List<PointData> points = new List<PointData>();
         try
         {
             using (StreamWriter outputFile = new StreamWriter("output.dat"))
@@ -68,39 +70,23 @@ public partial class Form1 : Form
                 {
                     double x = i * delta_t;
                     double y_value = FourierSeries(i, a0, aValues.ToList(), bValues.ToList(), NMax);
+                    points.Add(new PointData { X = x, Y = y_value });
+
                     outputFile.WriteLine(x + " " + y_value);
                 }
+                string json = JsonConvert.SerializeObject(points);
+
+                File.WriteAllText("output.json", json);
             }
+
+            RedrawDiagram(points);
         }
         catch (Exception ex)
         {
             MessageBox.Show("Error writing to output.dat: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-        // Plot the data using Gnuplot
-        string gnuplotPath = @"C:\Program Files\gnuplot\bin\gnuplot.exe";
-        string gnuplotCommand = "plot 'output.dat' with lines; pause mouse close";
 
-        ProcessStartInfo startInfo = new ProcessStartInfo(gnuplotPath)
-        {
-            Arguments = "-persist",
-            UseShellExecute = false,
-            RedirectStandardInput = true
-        };
-
-        using (Process gnuplotProcess = Process.Start(startInfo))
-        {
-            if (gnuplotProcess != null)
-            {
-                gnuplotProcess.StandardInput.WriteLine(gnuplotCommand);
-                gnuplotProcess.StandardInput.Flush();
-                gnuplotProcess.StandardInput.Close();
-                gnuplotProcess.WaitForExit();
-            }
-            else
-            {
-                MessageBox.Show("Error while calling Gnuplot.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+       
     }
 
 
@@ -197,7 +183,7 @@ public partial class Form1 : Form
         double result = a0 / 2.0;
         for (int n = 1; n <= n_max; n++)
         {
-            result += a[n-1] * Math.Cos(n * omega_0 * i * delta_t) + b[n-1] * Math.Sin(n * omega_0 * i * delta_t);
+            result += a[n - 1] * Math.Cos(n * omega_0 * i * delta_t) + b[n - 1] * Math.Sin(n * omega_0 * i * delta_t);
         }
         return result;
     }
@@ -205,5 +191,70 @@ public partial class Form1 : Form
     {
 
     }
+
+    private void button3_Click(object sender, EventArgs e)
+    {
+        List<PointData> points = ReadPointsFromJson("output.json");
+        RedrawDiagram(points);
+    }
+
+    private List<PointData> ReadPointsFromJson(string fileName)
+    {
+        List<PointData> points = new List<PointData>();
+
+        try
+        {
+            string json = File.ReadAllText(fileName);
+            points = JsonConvert.DeserializeObject<List<PointData>>(json);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Error reading from " + fileName + ": " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        return points;
+    }
+    private void RedrawDiagram(List<PointData> points)
+    {
+        try
+        {
+            // Save the points to a temporary file
+            string dataFilePath = "output_temp.dat";
+            using (StreamWriter writer = new StreamWriter(dataFilePath))
+            {
+                foreach (var point in points)
+                {
+                    writer.WriteLine($"{point.X} {point.Y}");
+                }
+            }
+
+            // Generate Gnuplot script
+            string scriptFilePath = "plot_script.gnu";
+            using (StreamWriter writer = new StreamWriter(scriptFilePath))
+            {
+                writer.WriteLine("set term wxt");
+                writer.WriteLine("plot '" + dataFilePath + "' with lines");
+                writer.WriteLine("pause mouse close");
+            }
+
+            // Launch Gnuplot process
+            ProcessStartInfo startInfo = new ProcessStartInfo("gnuplot")
+            {
+                Arguments = scriptFilePath,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            Process gnuplotProcess = new Process();
+            gnuplotProcess.StartInfo = startInfo;
+            gnuplotProcess.Start();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Error redrawing diagram: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+
 }
 

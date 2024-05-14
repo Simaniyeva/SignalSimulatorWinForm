@@ -45,6 +45,7 @@
             txt_a0 = new TextBox();
             label2 = new Label();
             txt_N = new TextBox();
+            button3 = new Button();
             SuspendLayout();
             // 
             // label1
@@ -229,12 +230,25 @@
             txt_N.TabIndex = 24;
             txt_N.TextAlign = HorizontalAlignment.Center;
             // 
+            // button3
+            // 
+            button3.FlatStyle = FlatStyle.Popup;
+            button3.Font = new Font("Berlin Sans FB", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            button3.Location = new Point(538, 116);
+            button3.Name = "button3";
+            button3.Size = new Size(106, 57);
+            button3.TabIndex = 26;
+            button3.Text = "Redesign from JSON";
+            button3.UseVisualStyleBackColor = true;
+            button3.Click += button3_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(69, 71, 57);
-            ClientSize = new Size(656, 490);
+            ClientSize = new Size(712, 508);
+            Controls.Add(button3);
             Controls.Add(label2);
             Controls.Add(txt_N);
             Controls.Add(label3);
@@ -278,5 +292,6 @@
         private TextBox txt_a0;
         private Label label2;
         private TextBox txt_N;
+        private Button button3;
     }
 }
